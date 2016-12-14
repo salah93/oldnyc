@@ -8,22 +8,30 @@
 # Produces a CSV file with three columns:
 # file-basename-no-extension,width,height
 
-import glob
-import os.path
 import re
 import subprocess
 import sys
+from glob import glob
+from os.path import splitext, basename
 
-for pattern in sys.argv[1:]:
-  for path in glob.glob(pattern):
-    size_str = subprocess.check_output(['identify', path])
 
-    m = re.search(r' (\d+)x(\d+) ', size_str)
-    assert m, size_str
-    width, height = [int(x) for x in m.groups()]
-    assert width > 0
-    assert height > 0
+def get_size(patterns):
+    dimensions = []
+    for pattern in patterns:
+        for path in glob(pattern):
+            size_str = subprocess.check_output(['identify', path])
+            m = re.search(r' (\d+)x(\d+) ', size_str)
+            try:
+                width, height = [int(x) for x in m.groups()]
+                assert width > 0
+                assert height > 0
+            except:
+                return dimensions
+            base, _ = splitext(basename(path))
+            dimensions.append('%s,%d,%d' % (base, width, height))
+    return dimensions
 
-    base, _ = os.path.splitext(os.path.basename(path))
 
-    print '%s,%d,%d' % (base, width, height)
+if __name__ == '__main__':
+    dimensions = get_size(sys.argv[1:])
+    print(dimensions)
