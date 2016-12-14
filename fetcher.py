@@ -1,10 +1,9 @@
-import base64
 import errno
 import hashlib
 import os
 import sys
 import time
-import urllib
+import requests
 
 
 # From http://stackoverflow.com/questions/600268/mkdir-p-functionality-in-python
@@ -12,7 +11,7 @@ def mkdir_p(path):
   try:
     os.makedirs(path)
   except OSError as exc: # Python >2.5
-    if exc.errno == errno.EEXIST:
+    if exc.errno == errno.EEXIST and os.path.isdir(path):
       pass
     else: raise
 
@@ -31,7 +30,6 @@ class Fetcher:
     self._wait_time = wait_time_secs
     self._last_fetch_time_ = 0
 
-
   def Fetch(self, url):
     """Returns data from the URL, possibly from the cache."""
     data = self._check_cache(url)
@@ -46,14 +44,12 @@ class Fetcher:
 
     return data
 
-
   def InCache(self, url):
     """Is the URL in the cache?"""
     if os.path.exists(self.CacheFile(url)):
       return True
     else:
       return False
-
 
   def FetchFromCache(self, url):
     """Like Fetch, but never goes to the network to get a location."""
@@ -70,13 +66,15 @@ class Fetcher:
     """Returns cached results for the location or None if not available."""
     cache_file = self.CacheFile(url)
     try:
-      return file(cache_file).read()
+      with open(cache_file, 'r') as f:
+        return f.read()
     except:
       return None
 
   def _cache_result(self, url, result):
     cache_file = self.CacheFile(url)
-    file(cache_file, "w").write(result)
+    with open(cache_file, "w") as f:
+      f.write(result)
 
   def _fetch(self, url):
     """Attempts to fetch the URL. Does rate throttling. Returns content."""
@@ -88,8 +86,7 @@ class Fetcher:
 
     sys.stderr.write("Fetching %s\n" % url)
     try:
-      f = urllib.URLopener().open(url)
-      return f.read()
+      return requests.get(url).text
     except IOError, e:
       sys.stderr.write("Error! %s on %s\n" % (e, url))
       return None
